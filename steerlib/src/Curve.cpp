@@ -69,19 +69,14 @@ void Curve::drawCurve(Color curveColor, float curveThickness, int window)
 	return;
 #endif
 }
-//I change here
+bool comparePoints(CurvePoint a, CurvePoint b)
+{
+	return a.time < b.time;
+}
 // Sort controlPoints vector in ascending order: min-first
 void Curve::sortControlPoints()
 {
-	//================DELETE THIS PART AND THEN START CODING===================
-	static bool flag = false;
-	if (!flag)
-	{
-		std::cerr << "ERROR>>>>Member function sortControlPoints is not implemented!" << std::endl;
-		flag = true;
-	}
-	//=========================================================================
-
+	std::sort(controlPoints.begin(), controlPoints.end(), &comparePoints);
 	return;
 }
 
@@ -152,16 +147,17 @@ Point Curve::useHermiteCurve(const unsigned int nextPoint, const float time)
 	Point newPosition;
 	float normalTime, intervalTime;
 
-	//================DELETE THIS PART AND THEN START CODING===================
-	static bool flag = false;
-	if (!flag)
-	{
-		std::cerr << "ERROR>>>>Member function useHermiteCurve is not implemented!" << std::endl;
-		flag = true;
-	}
-	//=========================================================================
+	const unsigned int prePoint = nextPoint - 1;
+	intervalTime = controlPoints[nextPoint].time - controlPoints[prePoint].time;
+	normalTime = (time - controlPoints[prePoint].time) / intervalTime;
 
-	// Calculate position at t = time on Hermite curve
+	float t2 = std::pow(normalTime, 2);
+	float t3 = std::pow(normalTime, 3);
+
+	newPosition = (2 * t3 - 3 * t2 + 1) * controlPoints[prePoint].position //f1t
+		+ (-2 * t3 + 3 * t2) * controlPoints[nextPoint].position  //f2t
+		+ (t3 - 2 * t2 + normalTime) * controlPoints[prePoint].tangent * intervalTime //f3t
+		+ (t3 - t2) * controlPoints[nextPoint].tangent * intervalTime; //f4t
 
 	// Return result
 	return newPosition;
@@ -172,16 +168,44 @@ Point Curve::useCatmullCurve(const unsigned int nextPoint, const float time)
 {
 	Point newPosition;
 
-	//================DELETE THIS PART AND THEN START CODING===================
-	static bool flag = false;
-	if (!flag)
-	{
-		std::cerr << "ERROR>>>>Member function useCatmullCurve is not implemented!" << std::endl;
-		flag = true;
-	}
-	//=========================================================================
+	float normalTime, intervalTime;
+
+	const unsigned int i0 = nextPoint - 2;
+	const unsigned int i1 = nextPoint - 1;
+	const unsigned int i2 = nextPoint;
+	const unsigned int i3 = nextPoint + 1;
+
+	Point p1 = controlPoints[i1].position;
+	Point p2 = controlPoints[i2].position;
+
+	Vector s1, s2;
+
+	// Calculate time interval, and normal time required for later curve calculations
+	intervalTime = controlPoints[i2].time - controlPoints[i1].time;
+	normalTime = (time - controlPoints[i1].time) / intervalTime;
+
+	float t2 = std::pow(normalTime, 2);
+	float t3 = std::pow(normalTime, 3);
 
 	// Calculate position at t = time on Catmull-Rom curve
+
+	if (i1 < 1) {
+		s1 = 2 * (p2 - p1) - (controlPoints[i3].position - p1) / 2;
+		s2 = (controlPoints[i3].position - p1) / 2;
+	}
+	else if (i3 >= controlPoints.size()) {
+		s1 = (p2 - controlPoints[i0].position) / 2;
+		s2 = 2 * (p2 - p1) - (p2 - controlPoints[i0].position) / 2;
+	}
+	else {
+		s1 = (p2 - controlPoints[i0].position) / 2;
+		s2 = (controlPoints[i3].position - p1) / 2;
+	}
+
+	newPosition = (2 * t3 - 3 * t2 + 1) * p1 // f1t
+		+ (-2 * t3 + 3 * t2) * p2 //f2t
+		+ (t3 - 2 * t2 + normalTime) * s1 //f3t
+		+ (t3 - t2) * s2;//f34
 	
 	// Return result
 	return newPosition;
